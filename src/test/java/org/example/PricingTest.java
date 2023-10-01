@@ -18,8 +18,11 @@ public class PricingTest {
         itemInventory = new InMemoryItemInventory();
         PricingStrategy unitPriceFiveMoney = new UnitPricingStrategy(new BigDecimal(5));
         PricingStrategy unitPriceThreeMoney = new UnitPricingStrategy(new BigDecimal(3));
+        int noOfChocolates = 3;
+        PricingStrategy bulkPricingTenMoney = new BulkPricingStrategy(noOfChocolates,new BigDecimal(10));
         itemInventory.add(new Item("Milk",unitPriceFiveMoney));
         itemInventory.add(new Item("Bread",unitPriceThreeMoney));
+        itemInventory.add(new Item("Chocolates",bulkPricingTenMoney));
         myOrder = new Order(itemInventory);
     }
     @Test
@@ -52,5 +55,14 @@ public class PricingTest {
         myOrder.add("Bread");
         assertEquals(new BigDecimal(13), myOrder.total());
     }
+
+
+//    @Test
+//    public void test_MultipleItemPurchase_At_BulkPrice(){
+//        myOrder.add("Chocolates");
+//        myOrder.add("Chocolates");
+//        myOrder.add("Chocolates");
+//        assertEquals(new BigDecimal(10), myOrder.total());
+//    }
 
 }

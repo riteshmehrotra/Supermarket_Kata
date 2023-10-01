@@ -1,7 +1,9 @@
 package org.example;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class InMemoryItemInventory implements ItemInventory {
 
@@ -17,7 +19,13 @@ public class InMemoryItemInventory implements ItemInventory {
 
     @Override
     public Item fetchItem(String inputItem) {
-        return items.stream().filter(item->item.getName().equals(inputItem)).findAny()
+        Item fetchedItem =  items.stream().filter(item->item.getName().equals(inputItem)).findAny()
                 .orElseThrow(()->new ItemNotFoundException(String.format("%s not found",inputItem)));
+        return  fetchedItem;
+    }
+
+    @Override
+    public BigDecimal fetchPrice(String item, int quantity) {
+        return this.fetchItem(item).getPrice(quantity);
     }
 }

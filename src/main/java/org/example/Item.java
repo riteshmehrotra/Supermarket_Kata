@@ -3,18 +3,21 @@ package org.example;
 import java.math.BigDecimal;
 
 public class Item {
-    private PricingStrategy pricingStrategy;
-    private String name;
+    private final PricingStrategy pricingStrategy;
+    private final String name;
+
     public Item(String name, PricingStrategy strategy) {
         this.pricingStrategy = strategy;
         this.name = name;
     }
 
-    public BigDecimal getPrice() {
-        return pricingStrategy.getPrice();
+    public BigDecimal getPrice(int quantity) {
+        return pricingStrategy.getPrice(quantity);
     }
 
     public String getName() {
         return name;
     }
+
+
 }

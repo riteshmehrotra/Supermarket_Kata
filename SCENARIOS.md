@@ -389,8 +389,169 @@ public class Item {
 
 30. Time to run the tests. Remember, no tests have been changed. So, not only all tests should run, our coverage will continue to be 100%. Let's see.
 
+**Unit tests**
 ![img_4.png](img_4.png)
 
+**Test coverage**
+![img_5.png](img_5.png)
 
+31. Now that we have introduced the strategy, its time to add new one for Bulk. We start with a new test case for new behaviour.
 
+```java
 
+   //Insert below lines in existing setup method before injecting inventory to Order constructor
+    PricingStrategy bulkPricingTenMoney = new BulkPricingStrategy(noOfChocolates,new BigDecimal(10));
+    itemInventory.add(new Item("Chocolates",bulkPricingTenMoney));
+    
+    //Add this test
+    @Test
+    public void test_MultipleItemPurchase_At_BulkPrice(){
+        myOrder.add("Chocolates");
+        myOrder.add("Chocolates");
+        myOrder.add("Chocolates");
+        assertEquals(new BigDecimal(10), myOrder.total());
+    }
+```
+
+34. The test case fails as we don't have a logic for bulk pricing. Time to fix the issue in Order class. Let's look at **total()** method. The current method aggregates prices for individual items. I suddenly see an issue with my logic.
+
+```java
+    public BigDecimal total() {
+        return items.stream().map(Item::getPrice).reduce(BigDecimal::add).orElse(BigDecimal.ZERO);
+    }
+```
+
+35. The above logic is biased towards unit pricing only with the way it adds price for each item to calculate total. By principle, it's not Order's responsibility to calculate what 2 cartons of milk are worth. 
+The pricing strategy belongs to each Item, and given the strategy varies by quantity, all strategies need to know how much are we ordering. We need to refactor our code to replicate our new thinking
+
+36. Let us start by observing Order's current structure and find any anomalies in our logic.
+    1. Each time we add an item to Order's items collection, we fetch Item object from inventory. So, for 3 cartons of milk, I have 5 **Item** instances in **Order** class **items** collection
+
+    ```java
+    public void add(String itemToFind) {
+            Item item = this.inventory.fetchItem(itemToFind);
+            items.add(item);
+        }
+    ```
+
+    2. Now here are few considerations
+       1. Every time I fetch and add an Item instance to Order collection, I am consuming more memory to represent the Object (with Object header, and allocating memory to its internal data types)
+       2. The bigger concern however is that I am creating a local copy of Item. So if in a world where prices change dynamically (e.g. Air tickets, Gold prices, Stock markets), my copy of Item and its price will immediately go stale
+       3. The worse part, with dynamic pricing, for the same item I might have different prices at different times depending on when Item was added to Order.
+    
+37. We need to fix our logic and instead of pulling in the Item object. But first, we need to tackle our failing test for BulkPricing. Let us comment it for a few mins as we refactor the code with our new understanding.
+
+```java
+// TODO: Fix failing Test as Bulk pricing not defined
+//    @Test
+//    public void test_MultipleItemPurchase_At_BulkPrice(){
+//        myOrder.add("Chocolates");
+//        myOrder.add("Chocolates");
+//        myOrder.add("Chocolates");
+//        assertEquals(new BigDecimal(10), myOrder.total());
+//    }
+```
+39. We have some good amount of refactoring to do. The key to refactoring while ensuring no regression, is to make small and safe change. We start with changing how **add** method works.
+Instead of adding item to the list of **items**, lets extract the name of item and add that instead. It forces us to change the list type from **Item** to **String**. Do that. It also impacts the **total** method.
+Earlier we were iterating through a list of **Item*, now that list is **String**, so to fetch the price for each Item we need to call **Inventory** again. Looks duplication, but lets do it anyway for now with a TODO added to our list.
+
+```java
+public class Order {
+
+    private final ItemInventory inventory;
+    List<String> items;
+
+    public Order(ItemInventory itemInventory) {
+        this.inventory = itemInventory;
+        items = new ArrayList<>();
+    }
+
+    public void add(String itemToFind) {
+        Item item = this.inventory.fetchItem(itemToFind);
+        //Change: Changed collection type from Item to String to record name only
+        //TODO: Record item reference instead of name
+        //TODO: Name is also case sensitive. Fix it
+        items.add(item.getName());
+    }
+
+    public BigDecimal total() {
+        BigDecimal total = BigDecimal.ZERO;
+        //TODO: The Order still calculates the price for each item (Forcing Unit pricing). The logic needs to be encapsulated away in Item class. Inventory called twice.
+        for (String item : items) {
+            total = total.add(this.inventory.fetchItem(item).getPrice());
+        }
+        return total;
+    }
+}
+```
+
+40. Run the tests. Everything should continue to pass.
+41. Our next step is to address the way Order is influencing calculating the pricing, as it forces all prices to be calculated for each item and tightly coupled to idea of Unit pricing.
+Let's start by adding a new method to **ItemInventory** interface to **fetchPrice** based on itemName and quantity and implement in InMemoryItemInventory. Make changes in **total** method to call this new behaviour **fetchPrice** with hardcoded value 1 instead of **fetchItem**
+
+**ItemInventory**
+```java
+public interface ItemInventory {
+    void add(Item item);
+
+    Item fetchItem(String item);
+    //Change: New method added for fetching price based on Item name and quantity
+    BigDecimal fetchPrice(String item, int quantity);
+}
+```
+
+**InMemoryItemInventory**
+```java
+@Override
+    public BigDecimal fetchPrice(String item, int quantity) {
+        return this.fetchItem(item).getPrice();
+    }
+```
+
+**Order**
+```java
+  public BigDecimal total() {
+        BigDecimal total = BigDecimal.ZERO;
+        //TODO: The Order still calculates the price for each item (Forcing Unit pricing). The logic needs to be encapsulated away in Item class
+        for (String item : items) {
+            total = total.add(this.inventory.fetchPrice(item,1)); //TODO: Hardcoded 1 to comply with Order's current behaviour
+        }
+        return total;
+    }
+```
+
+42. The inventory itself has no clue on how the pricing is calculated as that logic is encapsulated within **PricingStrategy** for each **Item**. Let's propagate the new quantity field down to Item and pricing strategies so that the pricing logic can be isolated at one place.
+
+**PricingStrategy interface**
+```java
+//Change: Add quantity as a parameter to all pricing strategies
+public interface PricingStrategy {
+    BigDecimal getPrice(int quantity);
+}
+```
+
+**UnitPricingStrategy class**
+```java
+//Change: Implement the new getPrice and update the logic to calculate Unit price for the given quantity by multiplication
+ public BigDecimal getPrice(int quantity) {
+        return price.multiply(BigDecimal.valueOf(quantity));
+    }
+```
+
+**Item class**
+```java
+//Change: Let the getPrice method accept quantity as parameter
+public BigDecimal getPrice(int quantity) {
+        return pricingStrategy.getPrice(quantity);
+    }
+```
+```java
+@Override
+    public BigDecimal fetchPrice(String item, int quantity) {
+        //Change: Pass down the quantity to Item method **getPrice**
+        return this.fetchItem(item).getPrice(quantity);
+    }
+```
+
+43. Run all tests. Everything should continue to pass.
+44. 

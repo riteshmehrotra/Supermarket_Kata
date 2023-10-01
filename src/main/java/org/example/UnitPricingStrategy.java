@@ -9,9 +9,8 @@ public class UnitPricingStrategy implements PricingStrategy {
         this.price = price;
     }
 
-
     @Override
-    public BigDecimal getPrice() {
-        return price;
+    public BigDecimal getPrice(int quantity) {
+        return price.multiply(BigDecimal.valueOf(quantity));
     }
 }
