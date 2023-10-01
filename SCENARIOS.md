@@ -9,8 +9,8 @@
 | Unit pricing (Qty)                | 5 cartons of Milk    | 25        |
 | Bulk pricing                      | 3 bars of chocolates | 10        |
 | Bulk pricing                      | 1 bar of chocolates  | Exception |
-| Composite pricing (Unit and Bulk) | 3 pies of cake       | 5         |
-| Composite pricing (Unit and Bulk) | 1 pie of cake        | 2         |
+| Composite pricing (Unit and Bulk) | 5 Apples             | 4         |
+| Composite pricing (Unit and Bulk) | 1 Apple              | 1         |
 | Unit pricing (Weight)             | 2 Kgs of Rice        | 10        |
 | Unit pricing (Weight)             | 500 gms of Lentils   | 4         |  
 
@@ -554,4 +554,107 @@ public BigDecimal getPrice(int quantity) {
 ```
 
 43. Run all tests. Everything should continue to pass.
-44. 
+44. Now let's shift our focus to Order class which still interferes with how pricing is calculated. We need to aggregate the number of items added to List of **items**, and pass the **item name** and **quantity** to **inventory** to fetch the price
+Refactor the Order class to change List to HashMap
+```java
+public class Order {
+
+    private final ItemInventory inventory;
+    Map<String, Integer> items;
+
+    public Order(ItemInventory itemInventory) {
+        this.inventory = itemInventory;
+        items = new HashMap<>();
+    }
+
+    //Change: If Item already exists, increment the quantity. If not, put a new record in the map.
+    public void add(String itemToFind) {
+        Item item = this.inventory.fetchItem(itemToFind);
+        if (items.containsKey(item.getName())) {
+            int currentCounter = items.get(item.getName());
+            items.put(item.getName(), currentCounter + 1);
+        } else
+            //TODO: Record item reference instead of name
+            items.put(item.getName(), 1);
+    }
+
+    //Change: Iterate through the map and pass the item name and quantity to the inventory fetchPrice method.
+    public BigDecimal total() {
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map.Entry<String, Integer> item : items.entrySet()) {
+            total = total.add(this.inventory.fetchPrice(item.getKey(), item.getValue()));
+        }
+        return total;
+    }
+
+```
+
+If you are interested to see what all has changed from previous version from Order, here is a view with Side by side change
+
+
+![img_6.png](img_6.png)
+
+
+45. Run all tests. It should continue to pass.
+46. Now its time for us to get back to our pending test case from Step 37. The Bulk pricing. Time to uncomment and fix it. If you have been following this guide step by step, you may find that as soon as you uncomment the test, it starts to pass automatically.
+![img_7.png](img_7.png)
+
+47. I missed a trick there. In hindsight, commenting the test case earlier allowed some black magic to happen. The reason it suddenly started working was because we decoupled the pricing from **Order** class and **BulkPriceStrategy** already had a logic to return price.
+Lesson from practice. Never comment a test case or be ready for surprises.
+```java
+public class BulkPricingStrategy implements PricingStrategy {
+
+    private final int applicableQuantity;
+    private final BigDecimal price;
+
+    public BulkPricingStrategy(int applicableQuantity, BigDecimal price) {
+        this.applicableQuantity = applicableQuantity;
+        this.price = price;
+    }
+
+    @Override
+    public BigDecimal getPrice(int quantity) {
+        return this.price;
+    }
+}
+```
+
+48. So, how do I fix my mistake? I am going to write another test case, where the Bulk pricing rule must fail.
+My new test checks that if I buy 2 or 4 chocolates instead of 3, the system should throw and **InvalidPurchaseException**, because the bulk rule is only applicable for purchase of 3 items.
+```java
+@Test(expected = InvalidPurchaseException.class)
+    public void test_MultipleItemPurchase_At_BulkPrice_WithInvalidQuantity_ThrowsException(){
+        myOrder.add("Chocolates");
+        myOrder.add("Chocolates");
+        assertEquals(new BigDecimal(10), myOrder.total());
+    }
+
+@Test(expected =  InvalidPurchaseException.class)
+public void test_MultipleItemPurchase_At_BulkPrice_WithMoreQuantity_ThrowsException(){
+        myOrder.add("Chocolates");
+        myOrder.add("Chocolates");
+        myOrder.add("Chocolates");
+        myOrder.add("Chocolates");
+        assertEquals(new BigDecimal(4), myOrder.total());
+        }
+```
+
+Our strategy defined in setup.
+```java
+    int noOfChocolates = 3;
+    PricingStrategy bulkPricingTenMoney = new BulkPricingStrategy(noOfChocolates,new BigDecimal(10));
+```
+
+49. Run all tests and see it pass. As always, with 100% coverage. One last scenario for us to work on. Imagine that we want some of the items to have a mixed strategy. 
+For instance, we want Apples to be priced 1 for each piece, but if you buy 5, we want to bulk price it for 4. How to achieve this stragegy? Let's start with a test case first
+
+```java
+ @Test
+    public void test_MultipleItem_MixedStrategyPricing(){
+        myOrder.add("Apple");
+        myOrder.add("Apple");
+        assertEquals(new BigDecimal(1), myOrder.total());
+    }
+```
+
+50. We need ability to execute a composite strategy for account for Unit pricing as well as Bulk pricing

@@ -1,7 +1,6 @@
-package org.example;
+package org.example.domain;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 public interface ItemInventory {
     void add(Item item);

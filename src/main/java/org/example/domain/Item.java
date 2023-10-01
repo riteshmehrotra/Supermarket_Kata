@@ -1,4 +1,6 @@
-package org.example;
+package org.example.domain;
+
+import org.example.strategies.PricingStrategy;
 
 import java.math.BigDecimal;
 

@@ -1,4 +1,6 @@
-package org.example;
+package org.example.strategies;
+
+import org.example.exceptions.InvalidPurchaseException;
 
 import java.math.BigDecimal;
 
@@ -13,6 +15,8 @@ public class BulkPricingStrategy implements PricingStrategy {
 
     @Override
     public BigDecimal getPrice(int quantity) {
+        if(quantity!=applicableQuantity)
+            throw new InvalidPurchaseException(String.format("This item can only be purchased in quantities of %d",applicableQuantity));
         return this.price;
     }
 }
