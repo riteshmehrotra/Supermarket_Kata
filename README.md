@@ -812,11 +812,11 @@ The **getPrice** method now aggregates unit price and bulk price before it retur
 
 Now let's run all our test cases and also check our code coverage one last time
 
-All test cases 
+**All test cases**<br/> 
 ![img_9.png](img_9.png)
 
 
-All code coverage
+**All code coverage**<br/>
 ![img_10.png](img_10.png)
 
 
