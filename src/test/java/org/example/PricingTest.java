@@ -4,7 +4,6 @@ import org.example.domain.InMemoryItemInventory;
 import org.example.domain.Item;
 import org.example.domain.ItemInventory;
 import org.example.domain.Order;
-import org.example.exceptions.InvalidPurchaseException;
 import org.example.exceptions.ItemNotFoundException;
 import org.example.strategies.BulkPricingStrategy;
 import org.example.strategies.PricingStrategy;
@@ -14,7 +13,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -29,11 +27,8 @@ public class PricingTest {
         PricingStrategy unitPriceFiveMoney = new UnitPricingStrategy(new BigDecimal(5));
         PricingStrategy unitPriceThreeMoney = new UnitPricingStrategy(new BigDecimal(3));
         int noOfChocolates = 3;
-        PricingStrategy bulkPricingTenMoney = new BulkPricingStrategy(noOfChocolates,new BigDecimal(10));
-        int noOfApples = 5;
-        PricingStrategy bulkPricingFourMoney = new BulkPricingStrategy(noOfApples,new BigDecimal(4));
-        PricingStrategy unitPricingOneMoney = new UnitPricingStrategy(BigDecimal.ONE);
-//        PricingStrategy compositePricings = new CompositePricingStrateg(strategies);
+        PricingStrategy bulkPricingFourMoney = new BulkPricingStrategy(5,new BigDecimal(4), new BigDecimal(1));
+        PricingStrategy bulkPricingTenMoney = new BulkPricingStrategy(noOfChocolates,new BigDecimal(10), new BigDecimal(4));
         itemInventory.add(new Item("Milk",unitPriceFiveMoney));
         itemInventory.add(new Item("Bread",unitPriceThreeMoney));
         itemInventory.add(new Item("Chocolates",bulkPricingTenMoney));
@@ -41,6 +36,8 @@ public class PricingTest {
 
         myOrder = new Order(itemInventory);
     }
+
+
 
     @After
     public void tearDown(){
@@ -85,21 +82,20 @@ public class PricingTest {
         assertEquals(new BigDecimal(10), myOrder.total());
     }
 
-
-    @Test(expected = InvalidPurchaseException.class)
-    public void test_MultipleItemPurchase_At_BulkPrice_WithLessQuantity_ThrowsException(){
+    @Test
+    public void test_MultipleItemPurchase_At_BulkPrice_WithLessQuantity(){
         myOrder.add("Chocolates");
         myOrder.add("Chocolates");
-        assertEquals(new BigDecimal(10), myOrder.total());
+        assertEquals(new BigDecimal(8), myOrder.total());
     }
 
-    @Test(expected =  InvalidPurchaseException.class)
-    public void test_MultipleItemPurchase_At_BulkPrice_WithMoreQuantity_ThrowsException(){
-        myOrder.add("Chocolates");
-        myOrder.add("Chocolates");
-        myOrder.add("Chocolates");
-        myOrder.add("Chocolates");
-        assertEquals(new BigDecimal(4), myOrder.total());
+    @Test
+    public void test_MultipleItemPurchase_At_BulkPrice_WithMoreQuantity(){
+        int numberOfChocolates = 16;
+        for(int i=0;i<numberOfChocolates;i++){
+            myOrder.add("Chocolates");
+        }
+        assertEquals(new BigDecimal(54), myOrder.total());
     }
     @Test
     public void test_MixedBasketOfMultiplePurchases_At_Unit_And_BulkPricing(){
@@ -116,7 +112,6 @@ public class PricingTest {
         myOrder.add("Apple");
         assertEquals(new BigDecimal(27), myOrder.total());
     }
-
 
 
 }
