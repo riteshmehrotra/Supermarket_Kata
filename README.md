@@ -416,10 +416,10 @@ public class Item {
 30. Time to run the tests. Remember, no tests have been changed. So, not only all tests should run, our coverage will
     continue to be 100%. Let's see.
 
-**Unit tests**
+**Unit tests**<br/>
 ![img_4.png](img_4.png)
 
-**Test coverage**
+**Test coverage**<br/>
 ![img_5.png](img_5.png)
 
 31. Now that we have introduced the strategy, its time to add new one for Bulk. We start with a new test case for new
@@ -655,7 +655,7 @@ change
 45. Run all tests. It should continue to pass.
 46. Now its time for us to get back to our pending test case from Step 37. The Bulk pricing. Time to uncomment and fix
     it. If you have been following this guide step by step, you may find that as soon as you uncomment the test, it
-    starts to pass automatically.
+    starts to pass automatically.<br/>
     ![img_7.png](img_7.png)
 
 47. I missed a trick there. In hindsight, commenting the test case earlier allowed some black magic to happen. The
